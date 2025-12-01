@@ -40,7 +40,13 @@ def image_ocr(image_path):
         ],
         stream=False,
         max_tokens=8192,
-        temperature=0,
+        temperature=0.0,
+        top_p=0.95,
+        seed=1234,
+        extra_body={
+            "top_k": 1,
+            "repetition_penalty": 1.0
+        }
     )
     return response.choices[0].message.content
 
