@@ -2,6 +2,8 @@ name: hunyuan_ocr_vllm
 
 services:
   vllm:
+    # 1. 【核心修复】确保 GPU 穿透
+    runtime: nvidia
     deploy:
       resources:
         reservations:
@@ -12,14 +14,21 @@ services:
     image: valdanito/vllm:hunyun_ocr_20251126
     ipc: host
     volumes:
-      - /storage-800GB/models:/storage-800GB/models
+      - ./models/:/storage-800GB/models
+
+    # 2. 【核心修复】恢复 entrypoint 为 python3，覆盖镜像默认的 vllm 命令
     entrypoint: python3
-    command: -m vllm.entrypoints.openai.api_server --port=5000 --host=0.0.0.0 ${VLLM_ARGS}
+
+    # 3. 参数部分保持原样，传递给 python3 执行
+    command: -m vllm.entrypoints.openai.api_server --port=5000 --host=0.0.0.0 --gpu-memory-utilization 0.85 --max-model-len 4096 ${VLLM_ARGS}
+
     environment:
       - CUDA_VISIBLE_DEVICES=0
-      - LD_LIBRARY_PATH=/usr/local/cuda-12.9/compat:$$LD_LIBRARY_PATH
+      # 建议让镜像自己处理库路径，或者指向通用路径
+      # - LD_LIBRARY_PATH=/usr/local/cuda/compat:$LD_LIBRARY_PATH
+      - NCCL_P2P_DISABLE=1
     ports:
-        - 10003:5000
+      - 10003:5000
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://0.0.0.0:5000/v1/models" ]
       interval: 30s
@@ -30,4 +39,3 @@ services:
       options:
         max-size: "100m"
         max-file: "5"
-
